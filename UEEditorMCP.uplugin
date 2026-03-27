@@ -37,7 +37,8 @@
 		},
 		{
 			"Name": "ModelViewViewModel",
-			"Enabled": true
+			"Enabled": true,
+			"Optional": true
 		}
 	]
 }

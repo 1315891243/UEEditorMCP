@@ -40,10 +40,19 @@ public class UEEditorMCP : ModuleRules
 			"MaterialEditor",     // For UMaterialEditingLibrary and material expression manipulation
 			"RenderCore",         // For material shader compilation
 			"RHI",                // For GMaxRHIShaderPlatform (compile diagnostics)
-			"ModelViewViewModel",           // MVVM runtime types (EMVVMBindingMode, EMVVMExecutionMode)
-			"ModelViewViewModelBlueprint",  // MVVM editor-time binding API (UMVVMBlueprintView, etc.)
-			"FieldNotification",            // INotifyFieldValueChanged interface
+			"ModelViewViewModel", // MVVM runtime types (available since UE5.2 experimental)
 		});
+
+		// ModelViewViewModelBlueprint and FieldNotification were restructured in UE5.3.
+		// Guard them so the plugin compiles cleanly on UE5.2 as well.
+		if (Target.Version.MinorEngineVersion >= 3)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				"ModelViewViewModelBlueprint",  // MVVM editor-time binding API (UMVVMBlueprintView, etc.)
+				"FieldNotification",            // INotifyFieldValueChanged interface
+			});
+		}
 
 		// Ensure proper RTTI/exceptions for crash handling
 		bUseRTTI = true;
