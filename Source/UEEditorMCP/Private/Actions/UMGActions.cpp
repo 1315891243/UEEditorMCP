@@ -29,7 +29,8 @@
 #include "Components/ComboBoxString.h"
 #include "Components/CheckBox.h"
 
-// MVVM includes
+// MVVM includes — only available with the ModelViewViewModelBlueprint module (UE5.3+)
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 #include "MVVMBlueprintView.h"
 #include "MVVMWidgetBlueprintExtension_View.h"
 #include "MVVMBlueprintViewModelContext.h"
@@ -38,6 +39,7 @@
 #include "Types/MVVMBindingMode.h"
 #include "Types/MVVMExecutionMode.h"
 #include "INotifyFieldValueChanged.h"
+#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 #include "Components/SpinBox.h"
 #include "Components/EditableTextBox.h"
 #include "Dom/JsonValue.h"
@@ -3369,6 +3371,13 @@ static UClass* ResolveClassByName(const FString& ClassName)
 }
 
 // =============================================================================
+// MVVM Actions — require ModelViewViewModelBlueprint module (UE5.3+)
+// On UE5.2 these implementations are excluded at compile time; the MCP bridge
+// registers stub handlers that return a clear "unsupported" error instead.
+// =============================================================================
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+
+// =============================================================================
 // FMVVMAddViewModelAction
 // =============================================================================
 
@@ -4013,3 +4022,5 @@ TSharedPtr<FJsonObject> FMVVMRemoveViewModelAction::ExecuteInternal(const TShare
 	ResultObj->SetStringField(TEXT("removed_viewmodel_id"), TargetId.ToString());
 	return ResultObj;
 }
+
+#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3

@@ -281,12 +281,36 @@ void UMCPBridge::RegisterActions()
 	ActionHandlers.Add(TEXT("set_slider_properties"), MakeShared<FSetSliderPropertiesAction>());
 	ActionHandlers.Add(TEXT("add_generic_widget_to_widget"), MakeShared<FAddGenericWidgetAction>());
 
-	// MVVM Actions
+	// MVVM Actions — only available with the ModelViewViewModelBlueprint module (UE5.3+)
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 	ActionHandlers.Add(TEXT("mvvm_add_viewmodel"), MakeShared<FMVVMAddViewModelAction>());
 	ActionHandlers.Add(TEXT("mvvm_add_binding"), MakeShared<FMVVMAddBindingAction>());
 	ActionHandlers.Add(TEXT("mvvm_get_bindings"), MakeShared<FMVVMGetBindingsAction>());
 	ActionHandlers.Add(TEXT("mvvm_remove_binding"), MakeShared<FMVVMRemoveBindingAction>());
 	ActionHandlers.Add(TEXT("mvvm_remove_viewmodel"), MakeShared<FMVVMRemoveViewModelAction>());
+#else
+	// On UE5.2 the full Blueprint-level MVVM API is not available.
+	// Register no-op stubs so callers receive a clear "unsupported" error
+	// rather than an unknown-action error.
+	struct FMVVMUnsupportedAction : public FEditorAction
+	{
+		FString Name;
+		explicit FMVVMUnsupportedAction(const FString& InName) : Name(InName) {}
+		virtual FString GetActionName() const override { return Name; }
+	protected:
+		virtual bool Validate(const TSharedPtr<FJsonObject>&, FMCPEditorContext&, FString& OutError) override
+		{
+			OutError = FString::Printf(TEXT("Action '%s' requires UE5.3 or later (ModelViewViewModelBlueprint module). Current engine version is 5.%d."), *Name, ENGINE_MINOR_VERSION);
+			return false;
+		}
+		virtual TSharedPtr<FJsonObject> ExecuteInternal(const TSharedPtr<FJsonObject>&, FMCPEditorContext&) override { return nullptr; }
+	};
+	ActionHandlers.Add(TEXT("mvvm_add_viewmodel"),    MakeShared<FMVVMUnsupportedAction>(TEXT("mvvm_add_viewmodel")));
+	ActionHandlers.Add(TEXT("mvvm_add_binding"),      MakeShared<FMVVMUnsupportedAction>(TEXT("mvvm_add_binding")));
+	ActionHandlers.Add(TEXT("mvvm_get_bindings"),     MakeShared<FMVVMUnsupportedAction>(TEXT("mvvm_get_bindings")));
+	ActionHandlers.Add(TEXT("mvvm_remove_binding"),   MakeShared<FMVVMUnsupportedAction>(TEXT("mvvm_remove_binding")));
+	ActionHandlers.Add(TEXT("mvvm_remove_viewmodel"), MakeShared<FMVVMUnsupportedAction>(TEXT("mvvm_remove_viewmodel")));
+#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 
 	// =========================================================================
 	// Material Actions (Materials, Shaders, Post-Process)

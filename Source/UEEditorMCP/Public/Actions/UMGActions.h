@@ -432,7 +432,12 @@ private:
 
 // =============================================================================
 // MVVM Actions — ModelViewViewModel integration for Widget Blueprints
+// NOTE: The full Blueprint-level MVVM API (ModelViewViewModelBlueprint module)
+//       is only available on UE5.3 and above.  On UE5.2 these classes are
+//       compiled out and the corresponding MCP commands return a graceful error.
 // =============================================================================
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 
 /**
  * Associate a ViewModel class with a Widget Blueprint via MVVM Extension.
@@ -505,3 +510,5 @@ protected:
 	virtual bool Validate(const TSharedPtr<FJsonObject>& Params, FMCPEditorContext& Context, FString& OutError) override;
 	virtual TSharedPtr<FJsonObject> ExecuteInternal(const TSharedPtr<FJsonObject>& Params, FMCPEditorContext& Context) override;
 };
+
+#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
