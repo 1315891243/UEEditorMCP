@@ -16,7 +16,7 @@ from mcp.types import Tool, TextContent
 from .connection import get_connection, PersistentUnrealConnection, CommandResult
 
 # Import tool modules (UMG is in server_umg.py, nodes in server_blueprint.py)
-from .tools import blueprint, editor, project, materials
+from .tools import blueprint, editor, level, project, materials
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ def _all_tools() -> list[Tool]:
     """Build full tool catalog for this server."""
     tools: list[Tool] = []
     tools.extend(editor.get_tools())
+    tools.extend(level.get_tools())
     tools.extend(blueprint.get_tools())
     tools.extend(project.get_tools())
     tools.extend(materials.get_tools())
@@ -164,6 +165,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # Route to tool modules
     if name in editor.TOOL_HANDLERS:
         return await editor.handle_tool(name, arguments)
+
+    if name in level.TOOL_HANDLERS:
+        return await level.handle_tool(name, arguments)
 
     if name in blueprint.TOOL_HANDLERS:
         return await blueprint.handle_tool(name, arguments)

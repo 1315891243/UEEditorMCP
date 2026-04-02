@@ -127,7 +127,17 @@ TSharedPtr<FJsonObject> FDiffAgainstDepotAction::ExecuteInternal(const TSharedPt
 	// ------------------------------------------------------------------
 	// 4. Load the depot version
 	// ------------------------------------------------------------------
+#if ENGINE_MINOR_VERSION >= 3
 	UPackage* DepotPackage = DiffUtils::LoadPackageForDiff(Revision);
+#else
+	// UE5.2: DiffUtils::LoadPackageForDiff doesn't exist — manually download and load
+	FString TempFilename;
+	UPackage* DepotPackage = nullptr;
+	if (Revision->Get(TempFilename))
+	{
+		DepotPackage = LoadPackage(nullptr, *TempFilename, LOAD_ForDiff | LOAD_DisableCompileOnLoad);
+	}
+#endif
 	if (!DepotPackage)
 	{
 		return CreateErrorResponse(FString::Printf(TEXT("Failed to load depot version for %s"), *AssetPath));
@@ -414,7 +424,9 @@ FString FDiffAgainstDepotAction::DiffTypeToString(int32 DiffType)
 	case EDiffType::NODE_COMMENT:              return TEXT("NODE_COMMENT");
 	case EDiffType::NODE_PROPERTY:             return TEXT("NODE_PROPERTY");
 	case EDiffType::INFO_MESSAGE:              return TEXT("INFO_MESSAGE");
+#if ENGINE_MINOR_VERSION >= 7
 	case EDiffType::CUSTOM_OBJECT:             return TEXT("CUSTOM_OBJECT");
+#endif
 	default:                                    return TEXT("UNKNOWN");
 	}
 }

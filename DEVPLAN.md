@@ -1,15 +1,15 @@
 # UEEditorMCP - 开发计划
 
-> 创建日期: 2026-02-13  
-> 最后更新: 2026-02-23  
+> 创建日期: 2026-02-13
+> 最后更新: 2026-04-02
 > 目标: 7 固定 MCP 工具 + Action Registry 架构
 
-## 0) 状态快照（2026-02-22）
+## 0) 状态快照（2026-04-02）
 
-- 当前里程碑：Phase 1 / Phase 2 / Phase 3 / Phase 4 / Phase 5 / **Phase 6 均已完成**。
+- 当前里程碑：Phase 1 / Phase 2 / Phase 3 / Phase 4 / Phase 5 / Phase 6 / **Phase 7 均已完成**。
 - **性能优化**（2026-02-15）：`ue_batch` 已从 N 次 TCP 往返优化为 **单次 TCP 往返**（通过 C++ `batch_execute`）；批处理上限从 20 提升到 50。
 - 布局系统：Layout V2（Enhanced Sugiyama）已落地到 `LayoutActions.h/.cpp`。
-- 当前可检索 Action 数：**141**（运行时 `ue_actions_search` 预期，重启 MCP 后生效）。
+- 当前注册 C++ 命令数：**~172**；Python Action Registry 当前可检索 Action 数：**~141**（运行时 `ue_actions_search` 预期，重启 MCP 后生效）。
 - **选区编程写入**（2026-02-17）：新增 `graph.set_selected_nodes`（按节点 ID 设置选区）和 `graph.batch_select_and_act`（批量分组选区 + 按组执行动作），支持全自动按用途拆分后逐组封装（collapse_selection_to_function / collapse_selection_to_macro / auto_comment 等）。
 - **折叠为宏**（2026-02-19）：新增 `graph.collapse_selection_to_macro`，将当前选中节点折叠为蓝图宏（Macro）。复用引擎原生 `CollapseSelectionToMacro` 命令流，返回新建宏名称及前后宏数量；宏支持 Latent 节点（Delay 等），不适用于 AnimGraph。
 - 新增引擎生命周期 Action：`editor.is_ready`（就绪检测）、`editor.request_shutdown`（优雅/强制关闭）。
@@ -24,8 +24,9 @@
 - **资产重命名与重定向器修复**（2026-02-20）：新增 `editor.rename_assets` Action，支持单个/批量资产重命名（`items[]`）并可自动 `FixupReferencers`（`fixup_mode: delete|leave|prompt`）。
 - **Diff Against Depot 能力**（2026-02-22）：新增 `diff_against_depot` C++ Action（基于引擎 `FGraphDiffControl::DiffGraphs` 与 `DiffUtils::CompareUnrelatedObjects`），并在 `ue-editor-mcp-logs` 暴露 `unreal.asset_diff.get` 工具。支持 Blueprint 图级别节点差异（增删改动）和通用资产属性级 diff，返回结构化 JSON。Build.cs 新增 `SourceControl` 模块依赖。
 - **材质系统增强**（2026-02-22）：Phase 4 已完成全部 8 项任务（P4.1-P4.8）。现有材质 Action 覆盖完整创建-编辑-编译-实例化管线。`material.set_expression_property` 已增加 UObject 引用属性支持（P5 热修，Texture / MaterialFunction / 通用 UObject）。
-- **Phase 5 完成**（2026-02-22）：材质编译诊断增强（真实 `CompileErrors` + `ErrorExpressions` 返回）、`material.apply_to_component` / `material.apply_to_actor`（材质应用到关卡 Actor）、材质编辑器 Auto Layout 菜单注册——全部 4 项任务已完成。
-- **Phase 6 完成**（2026-02-23）：PIE 控制（启动/停止/状态查询）、日志清空与会话分段、断言型验证工具、World Outliner 管理（Actor 重命名/文件夹组织/选择/层级查询）。新增 9 个 Action，总计 141 个。
+- **Phase 5 完成**（2026-02-22）：材质编译诊断增强（真实 `CompileErrors` + `ErrorExpressions` 返回）、`material.apply_to_component` / `material.apply_to_actor`（材质应用到关卡 Actor）、材质编辑器 Auto Layout 菜单注册——全部 4 项任务已完成。新增隐含任务 **P5.5** `material.get_selected_nodes`（获取材质编辑器当前选中节点）和 **P5.6** `material.refresh_editor`（刷新材质编辑器视图），均已注册。
+- **Phase 6 完成**（2026-02-23）：PIE 控制（启动/停止/状态查询）、日志清空与会话分段、断言型验证工具、World Outliner 管理（Actor 重命名/文件夹组织/选择/层级查询）。新增 9 个 Action，总计 141 个（Python Registry）/ ~162 个（C++ 注册）。
+- **Phase 7 完成**（2026-04-02）：关卡管理能力（Level Actions）补齐——新增 6 个 C++ Action，覆盖关卡创建、打开、保存、当前关卡查询、Level Blueprint 获取与编辑器打开。Python Registry 新增 `_LEVEL_ACTIONS` 组（6 条 ActionDef）。新增 `editor.open_asset_editor` Action（在编辑器中打开任意资产）及节点跨图迁移能力（`graph.export_nodes_text` / `graph.import_nodes_text`，基于引擎原生 `FEdGraphUtilities`）。C++ 注册命令总计 **~172 个**。
 
 ---
 
@@ -72,7 +73,7 @@ VS Code / MCP Client (GitHub Copilot Chat)
         │
         │  GameThread dispatch
         v
-  FEditorAction subclasses (~150 个)
+  FEditorAction subclasses (~172 个)
         │
         v
   Unreal Editor
@@ -131,6 +132,8 @@ VS Code / MCP Client (GitHub Copilot Chat)
 | MVVM 绑定 | `widget.mvvm_*` | `widget.mvvm_add_viewmodel`, `widget.mvvm_add_binding`, `widget.mvvm_get_bindings`, `widget.mvvm_remove_binding`, `widget.mvvm_remove_viewmodel` |
 | 输入 | `input.*` | `input.create_action`, `input.create_mapping` |
 | 布局 | `layout.*` | `layout.auto_selected`, `layout.auto_subtree`, `layout.auto_blueprint` |
+| 关卡 | `level.*` | `level.create`, `level.open`, `level.save`, `level.get_current`, `level.get_blueprint`, `level.open_blueprint_editor` |
+| 资产编辑器 | `asset.*` | `asset.open_editor` |
 
 ### 检索算法
 
@@ -1587,21 +1590,99 @@ TSharedPtr<FJsonObject> FStopPIEAction::ExecuteInternal(const TSharedPtr<FJsonOb
 
 ---
 
+### Phase 7: 关卡管理 / 节点迁移 / 资产编辑器 / 材质扩展（2026-04-02）
+
+> **目标**：补齐关卡生命周期管理（Level Actions）、跨图节点迁移、资产编辑器控制及材质编辑器辅助工具四类能力，进一步扩展自动化编辑流水线的纵深。
+> **实现位置**：`LevelActions.h/.cpp`（新文件）、`GraphActions.h/.cpp`（扩展）、`EditorActions.h/.cpp`（扩展）、`MaterialActions.h/.cpp`（扩展）、`registry/actions.py`（新增 `_LEVEL_ACTIONS`）。
+> **风险评级**：low-moderate — Level 创建涉及 UWorld 生命周期细节（见 Bug 修复记录），其余均基于已有引擎 API。
+
+#### P7 任务列表
+
+| # | 任务 | 文件 | 说明 | 优先级 | 状态 |
+|---|------|------|------|--------|------|
+| **P7.1** | `level.create` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 在指定路径创建新 `.umap` 文件。核心方案：`NewObject<UWorld>()` 创建裸 World（避免 `UWorld::CreateWorld()` 导致的 TickTaskManager/Physics 注册）→ `SavePackage` 序列化 → 立即清除 RF_Standalone 并 `CollectGarbage()`，防止 LoadMap 时检测到泄漏。同步扫描 AssetRegistry。 | P0 | ✅ |
+| **P7.2** | `level.open` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 打开已有关卡。使用 `FEditorFileUtils::LoadMap()`；LoadMap 将断开 TCP 连接（World 切换），客户端应实现重连逻辑。 | P0 | ✅ |
+| **P7.3** | `level.save` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 保存当前关卡。对 `/Temp/` 路径（未保存的默认关卡）返回错误，要求显式提供目标路径。内部使用 `UEditorLoadingAndSavingUtils::SaveMap()`。 | P0 | ✅ |
+| **P7.4** | `level.get_current` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 查询当前打开的关卡信息：World 名称、包路径、是否 Dirty、是否有 Level Blueprint。只读 Action。 | P0 | ✅ |
+| **P7.5** | `level.get_blueprint` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 获取当前关卡的 Level Script Blueprint 对象，并将其写入 `FMCPEditorContext` 供后续 `blueprint.*` 命令直接操作（无需指定蓝图名）。返回 `blueprint_name`、`blueprint_class`、`has_event_graph`。 | P0 | ✅ |
+| **P7.6** | `level.open_blueprint_editor` | `Actions/LevelActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 在编辑器中打开 Level Script Blueprint 的图编辑器视图，供 AI 或用户进行后续图操作。 | P1 | ✅ |
+| **P7.7** | `graph.export_nodes_text` / `graph.import_nodes_text` | `Actions/GraphActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 基于引擎原生 `FEdGraphUtilities::ExportNodesToText()` / `ImportNodesFromText()` 实现跨图节点迁移。`export` 返回节点文本序列化字符串，`import` 接收文本并粘贴到目标图。支持跨蓝图节点复制。 | P1 | ✅ |
+| **P7.8** | `asset.open_editor` | `Actions/EditorActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 通过 `UAssetEditorSubsystem::OpenEditorForAsset()` 打开任意资产的编辑器窗口。输入 `asset_path`。 | P1 | ✅ |
+| **P7.9** | `material.get_selected_nodes` | `Actions/MaterialActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 获取当前材质编辑器中选中的节点列表（名称 / 类型 / 位置）。只读 Action，辅助 AI 定位材质图中的目标节点。 | P2 | ✅ |
+| **P7.10** | `material.refresh_editor` | `Actions/MaterialActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 刷新材质编辑器视图（触发重绘 / RebuildGraph）。用于批量修改后强制 UI 同步。 | P2 | ✅ |
+| **P7.11** | `editor.get_asset_history` | `Actions/EditorDiffActions.h/.cpp`, `MCPBridge.cpp`, `registry/actions.py` | 通过 SourceControl 模块获取资产的修订历史列表（修订号 / 作者 / 日期 / 描述）。与已有 `diff_against_depot` 配合使用。 | P2 | ✅ |
+
+#### P7 关键实现细节
+
+<details>
+<summary>P7.1 Level 创建的 World 生命周期陷阱（三次失败与最终方案）</summary>
+
+**失败方案 1**：`UWorld::CreateWorld(EWorldType::Editor)` — 注册了 TickTaskManager / Physics / AI 子系统，即使 `EWorldType::None` 也一样。`CollectGarbage()` 后触发 `!LevelList.Contains(TickTaskLevel)` 断言（`TickTaskManager.cpp`）。
+
+**失败方案 2**：`NewObject<UWorld>()` + `RF_Standalone` 不清除就调用 `DestroyWorld(false)` — 触发渲染器 `Primitives.Num() == 0` 断言。
+
+**失败方案 3**：`GEditor->Exec("MAP NEW")` — 显示保存对话框，阻塞 GameThread 无限等待。
+
+**最终方案**：
+```cpp
+UPackage* Package = CreatePackage(*Path);
+FName WorldName = FName(*FPackageName::GetShortName(Path));
+UWorld* NewWorld = NewObject<UWorld>(Package, WorldName);   // 裸 World，无引擎子系统注册
+NewWorld->WorldType = EWorldType::None;
+NewWorld->SetFlags(RF_Public | RF_Standalone);
+// ... 创建 PersistentLevel + UModel ...
+UPackage::SavePackage(Package, NewWorld, *PackageFilename, SaveArgs);
+// 立即清除 RF_Standalone，防止 LoadMap 检测到泄漏：
+NewWorld->ClearFlags(RF_Public | RF_Standalone | RF_Transactional);
+NewWorld->SetFlags(RF_Transient);
+Package->ClearFlags(RF_Standalone);
+Package->SetFlags(RF_Transient);
+CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+```
+
+**核心规则**：
+- `NewObject<UWorld>()` 不注册任何引擎子系统，GC 安全。
+- `RF_Standalone` 必须在 `SavePackage` 前设置（否则 SavePackage 报错），保存后立即清除。
+- `CollectGarbage()` 必须在 Save 之后、下一次 `LoadMap` 之前调用，否则 `EditorServer.cpp:2066` 检测到泄漏并触发 Fatal。
+- 不可对 `EWorldType::None` 的 World 调用 `DestroyWorld()`。
+
+</details>
+
+<details>
+<summary>P7.3 save_level 的 /Temp/ 路径坑</summary>
+
+编辑器默认空关卡路径为 `/Temp/Untitled_1`。`FPackageName::TryConvertLongPackageNameToFilename()` 对该路径返回无效结果，传给 `SavePackage()` 会导致 Access Violation。
+
+**修复**：检测包路径是否以 `/Temp/` 开头，若是则返回错误要求调用方传入显式 `path` 参数后再调用 `save_level`。
+
+</details>
+
+---
+
 ## 四、文件结构
 
-### 新增文件
+### 新增文件（截至 Phase 7）
 
 ```
+Source/UEEditorMCP/
+    Public/Actions/
+        LevelActions.h          # 6 Level 管理 Action 声明 (Phase 7)
+        EditorDiffActions.h     # 2 SCM Diff Action 声明 (Phase 3.3)
+    Private/Actions/
+        LevelActions.cpp        # Level Actions 实现 (Phase 7)
+        EditorDiffActions.cpp   # Diff Actions 实现 (Phase 3.3)
+
 Python/ue_editor_mcp/
     registry/
         __init__.py         # ActionRegistry 类 + 搜索引擎
-        actions.py          # 全部 115 个 action 注册
+        actions.py          # ~141 个 ActionDef 注册（含 Phase 7 _LEVEL_ACTIONS）
     resources/
         __init__.py         # 资源索引
         patch_spec.md       # Patch 规范文档
         error_codes.md      # 错误码解释
         conventions.md      # 项目约定
-    server_unified.py       # 新的统一 7-tool server
+    server_unified.py       # 统一 7-tool server（主入口）
+    server_unreal_logs.py   # 日志/缩略图/Diff 独立 server
 ```
 
 ### 保留文件（兼容回退）
@@ -1685,5 +1766,20 @@ Python 层 (MCP SDK)
 | # | 问题 | 根因 | 修复 | 涉及文件 |
 |---|------|------|------|----------|
 | B4 | `graph.get_selected_nodes` / `graph.collapse_selection_to_function` 在多蓝图窗口打开时始终操作第一个蓝图编辑器，而非当前聚焦的编辑器 | `NodeActions.cpp` 的 `GetActiveBlueprintEditorForAction()` 遍历 `GetAllEditedAssets()` 后直接返回第一个匹配项，完全没有检查活跃/前台状态 | 将三处独立的蓝图编辑器解析函数统一为 `FMCPCommonUtils::GetActiveBlueprintEditor()`，使用三层启发式判断（`IsActive()` → `IsForeground()` → `HasFocusedDescendants()` → 回退并警告日志） | `MCPCommonUtils.h/cpp`（新增公共方法）、`NodeActions.cpp`（删除有 bug 的 static 版本）、`UEEditorMCPModule.cpp`（删除仅 IsForeground 的 static 版本）、`LayoutActions.cpp`（删除本地 static 版本，改用公共方法） |
+
+</details>
+
+<details>
+<summary>Bug 修复记录 (2026-04-02 — Phase 7 Level Actions)</summary>
+
+| # | 问题 | 根因 | 修复 | 涉及文件 |
+|---|------|------|------|----------|
+| B5 | `FCreateLevelAction` 调用 `UWorld::CreateWorld(EWorldType::None)` 后 `CollectGarbage()` 触发 `!LevelList.Contains(TickTaskLevel)` 断言 | `UWorld::CreateWorld()` 会将自身注册到 `FTickTaskManager`、Physics、AI 子系统，即使 `EWorldType::None` 也一样。`CollectGarbage()` 销毁 World 时这些反注册逻辑缺失 | 改用 `NewObject<UWorld>()` 直接创建裸 World 对象，不经过 `CreateWorld()` 工厂方法，完全规避子系统注册 | `LevelActions.cpp: FCreateLevelAction::ExecuteInternal` |
+| B6 | `SavePackage` 报错"没有任何提供的Object标记"，保存失败 | 在 `SavePackage` 前提前清除了 `RF_Standalone`，导致 Package 无可序列化对象 | `RF_Standalone` 必须在 `SavePackage` **期间**保留，保存完成后再清除。调整标志设置顺序 | `LevelActions.cpp: FCreateLevelAction::ExecuteInternal` |
+| B7 | 调用 `NewWorld->MarkAsGarbage()` 触发 `!IsRooted()` 断言 | `MarkAsGarbage()` 要求对象不能被 Root 引用。World 创建后 Package 对其有强引用 | 移除 `MarkAsGarbage()` 调用，改为直接清除 RF_Standalone / RF_Transactional，设置 RF_Transient，然后 `CollectGarbage()` 自然回收 | `LevelActions.cpp: FCreateLevelAction::ExecuteInternal` |
+| B8 | 调用 `NewWorld->DestroyWorld(false)` 触发渲染器 `Primitives.Num() == 0` 断言 | `DestroyWorld()` 内部调用渲染器清理路径，但 `EWorldType::None` 的 World 从未初始化渲染器组件 | 不对 `EWorldType::None` 类型 World 调用 `DestroyWorld()`，让 GC 自然销毁 | `LevelActions.cpp: FCreateLevelAction::ExecuteInternal` |
+| B9 | `GEditor->Exec("MAP NEW")` 无响应，测试超时 | `MAP NEW` 命令在编辑器有未保存内容时显示模态"是否保存"对话框，阻塞 GameThread | 放弃使用 `Exec("MAP NEW")`；改用直接操作 UPackage/UWorld 的方案（见 B5-B8 修复链） | `LevelActions.cpp: FCreateLevelAction::ExecuteInternal` |
+| B10 | `FSaveLevelAction` 在 `/Temp/Untitled_1` 路径上 Access Violation | `TryConvertLongPackageNameToFilename("/Temp/Untitled_1", ...)` 返回无效路径，`SavePackage` 写入无效地址 | 检测包路径是否以 `/Temp/` 开头，若是则返回错误提示用户先通过 `path` 参数指定有效保存路径 | `LevelActions.cpp: FSaveLevelAction::ExecuteInternal` |
+| B11 | Python 测试脚本 `add_material_expression` 时传 `MaterialExpressionTextureSample`（UE 类全名）导致"Unknown expression class"错误 | MCP `ExpressionClassMap` 以**短名**（如 `TextureSample`）为键，不接受带 `MaterialExpression` 前缀的 UE 类型全名 | 修正调用方传入的类名为短名；MEMORY.md 和 `run_tasks` 脚本已同步更新 | `run_tasks2026_04_02_14_22_37.py` |
 
 </details>

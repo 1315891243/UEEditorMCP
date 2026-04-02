@@ -119,10 +119,13 @@ if (-not $UEPython -and $env:UE_ENGINE_DIR) {
 # --- Priority 5: Scan common installation directories ---
 if (-not $UEPython) {
     # Build list of candidate drives
-    $drives = @("C:", "D:", "E:", "F:")
+    $drives = @("C:", "D:", "E:", "F:", "G:", "H:")
     $patterns = @(
-        "{0}\EpicGame\UE_*",
         "{0}\Program Files\Epic Games\UE_*",
+        "{0}\Epic Games\UE_*",
+        "{0}\EpicGames\UE_*",
+        "{0}\EpicGame\UE_*",
+        "{0}\UE5\UE_*",
         "{0}\UnrealEngine\UE_*"
     )
     foreach ($drive in $drives) {
@@ -259,13 +262,13 @@ $mcpJson = @"
       "env": {
         "PYTHONPATH": "$pythonPath"
       }
-        },
-        "ue-editor-mcp-logs": {
-            "command": "$venvPython",
-            "args": ["-m", "ue_editor_mcp.server_unreal_logs"],
-            "env": {
-                "PYTHONPATH": "$pythonPath"
-            }
+    },
+    "ue-editor-mcp-logs": {
+      "command": "$venvPython",
+      "args": ["-m", "ue_editor_mcp.server_unreal_logs"],
+      "env": {
+        "PYTHONPATH": "$pythonPath"
+      }
     }
   }
 }

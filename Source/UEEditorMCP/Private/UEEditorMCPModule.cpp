@@ -242,7 +242,11 @@ static FVector2D GetMaterialNodeSize(
 	FVector2D CodeMinSize(0.0, 0.0);
 	bool bHasCodeMin = false;
 
-	if (CustomExpr && CustomExpr->ShowCode && !CustomExpr->Code.IsEmpty())
+	if (CustomExpr && !CustomExpr->Code.IsEmpty()
+#if ENGINE_MINOR_VERSION >= 4
+		&& CustomExpr->ShowCode
+#endif
+		)
 	{
 		bHasCodeMin = true;
 

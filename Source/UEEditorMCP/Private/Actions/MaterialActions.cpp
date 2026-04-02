@@ -90,6 +90,9 @@
 #include "Editor.h"
 #include "Kismet/GameplayStatics.h"
 
+// Material domain enum (EMaterialDomain: MD_Surface, MD_PostProcess, etc.)
+#include "MaterialDomain.h"
+
 // Post process volume
 #include "Engine/PostProcessVolume.h"
 #include "Components/PostProcessComponent.h"
@@ -198,9 +201,24 @@ static void InitExpressionClassMap()
 	if (ExpressionClassMap.Num() > 0) return; // Already initialized
 
 	// Scene/Texture access
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 	ExpressionClassMap.Add(TEXT("SceneTexture"), UMaterialExpressionSceneTexture::StaticClass());
+#else
+	// UE5.3: UMaterialExpressionSceneTexture has NO_API, use FindObject to avoid LNK2019
+	if (UClass* Cls = FindObject<UClass>(nullptr, TEXT("/Script/Engine.MaterialExpressionSceneTexture")))
+		ExpressionClassMap.Add(TEXT("SceneTexture"), Cls);
+#endif
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	// UE5.6+: MinimalAPI added — StaticClass() is safely exported
 	ExpressionClassMap.Add(TEXT("SceneDepth"), UMaterialExpressionSceneDepth::StaticClass());
 	ExpressionClassMap.Add(TEXT("ScreenPosition"), UMaterialExpressionScreenPosition::StaticClass());
+#else
+	// UE5.5: no MinimalAPI — cross-module StaticClass() causes LNK2019; use FindObject
+	if (UClass* SceneDepthClass = FindObject<UClass>(nullptr, TEXT("/Script/Engine.MaterialExpressionSceneDepth")))
+		ExpressionClassMap.Add(TEXT("SceneDepth"), SceneDepthClass);
+	if (UClass* ScreenPosClass = FindObject<UClass>(nullptr, TEXT("/Script/Engine.MaterialExpressionScreenPosition")))
+		ExpressionClassMap.Add(TEXT("ScreenPosition"), ScreenPosClass);
+#endif
 	ExpressionClassMap.Add(TEXT("TextureCoordinate"), UMaterialExpressionTextureCoordinate::StaticClass());
 	ExpressionClassMap.Add(TEXT("TextureSample"), UMaterialExpressionTextureSample::StaticClass());
 	ExpressionClassMap.Add(TEXT("PixelDepth"), UMaterialExpressionPixelDepth::StaticClass());
@@ -436,15 +454,27 @@ TOptional<EBlendableLocation> FCreateMaterialAction::ResolveBlendableLocation(co
 	if (LocationString.IsEmpty() || LocationString.Equals(TEXT("AfterTonemapping"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_AfterTonemapping"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_SceneColorAfterTonemapping"), ESearchCase::IgnoreCase))
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		return BL_SceneColorAfterTonemapping;
+#else
+		return BL_AfterTonemapping;
+#endif
 	if (LocationString.Equals(TEXT("BeforeTonemapping"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_BeforeTonemapping"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_SceneColorAfterDOF"), ESearchCase::IgnoreCase))
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		return BL_SceneColorAfterDOF;
+#else
+		return BL_BeforeTonemapping;
+#endif
 	if (LocationString.Equals(TEXT("BeforeTranslucency"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_BeforeTranslucency"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_SceneColorBeforeDOF"), ESearchCase::IgnoreCase))
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		return BL_SceneColorBeforeDOF;
+#else
+		return BL_BeforeTranslucency;
+#endif
 	if (LocationString.Equals(TEXT("ReplacingTonemapper"), ESearchCase::IgnoreCase) ||
 		LocationString.Equals(TEXT("BL_ReplacingTonemapper"), ESearchCase::IgnoreCase))
 		return BL_ReplacingTonemapper;
@@ -525,7 +555,11 @@ TSharedPtr<FJsonObject> FCreateMaterialAction::ExecuteInternal(const TSharedPtr<
 	else if (Domain.GetValue() == MD_PostProcess)
 	{
 		// Default to SceneColorAfterDOF for post-process materials (needed for depth access)
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		NewMaterial->BlendableLocation = BL_SceneColorAfterDOF;
+#else
+		NewMaterial->BlendableLocation = BL_BeforeTonemapping;
+#endif
 	}
 
 	// Trigger compilation
@@ -578,8 +612,13 @@ void FAddMaterialExpressionAction::SetExpressionProperties(UMaterialExpression* 
 		const TSharedPtr<FJsonValue>& PropValue = Pair.Value;
 
 		// Handle specific expression types and their properties
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		// SceneTexture
 		if (UMaterialExpressionSceneTexture* SceneTex = Cast<UMaterialExpressionSceneTexture>(Expression))
+#else
+		// SceneTexture — use FindObject to avoid NO_API LNK2019 on UE5.2/5.3
+		if (UMaterialExpressionSceneTexture* SceneTex = [&]() -> UMaterialExpressionSceneTexture* { static UClass* C = FindObject<UClass>(nullptr, TEXT("/Script/Engine.MaterialExpressionSceneTexture")); return (Expression && C && Expression->IsA(C)) ? static_cast<UMaterialExpressionSceneTexture*>(Expression) : nullptr; }())
+#endif
 		{
 			if (PropName == TEXT("SceneTextureId"))
 			{
@@ -1300,7 +1339,14 @@ TSharedPtr<FJsonObject> FCompileMaterialAction::ExecuteInternal(const TSharedPtr
 	Material->ForceRecompileForRendering();
 
 	// P5.1: Wait for this material's shader compilation to finish, then read real errors
+	// UE 5.7+ added an EShaderPlatform overload; UE 5.6 requires ERHIFeatureLevel::Type
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	FMaterialResource* MatResource = Material->GetMaterialResource(GMaxRHIShaderPlatform);
+#elif ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 5
+	FMaterialResource* MatResource = Material->GetMaterialResource(GetMaxSupportedFeatureLevel(GMaxRHIShaderPlatform));
+#else
+	FMaterialResource* MatResource = Material->GetMaterialResource(GMaxRHIFeatureLevel);
+#endif
 	if (MatResource)
 	{
 		MatResource->FinishCompilation();
@@ -1882,8 +1928,13 @@ TSharedPtr<FJsonObject> FGetMaterialSummaryAction::GetExpressionProperties(UMate
 		Props->SetNumberField(TEXT("Scale"), Noise->Scale);
 		Props->SetNumberField(TEXT("Levels"), Noise->Levels);
 	}
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 	// SceneTexture
 	else if (UMaterialExpressionSceneTexture* SceneTex = Cast<UMaterialExpressionSceneTexture>(Expr))
+#else
+	// SceneTexture — use FindObject to avoid NO_API LNK2019 on UE5.2/5.3
+	else if (UMaterialExpressionSceneTexture* SceneTex = [&]() -> UMaterialExpressionSceneTexture* { static UClass* C = FindObject<UClass>(nullptr, TEXT("/Script/Engine.MaterialExpressionSceneTexture")); return (Expr && C && Expr->IsA(C)) ? static_cast<UMaterialExpressionSceneTexture*>(Expr) : nullptr; }())
+#endif
 	{
 		Props->SetNumberField(TEXT("SceneTextureId"), static_cast<int32>(SceneTex->SceneTextureId));
 	}

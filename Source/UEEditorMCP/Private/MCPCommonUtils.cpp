@@ -6,6 +6,9 @@
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/SimpleConstructionScript.h"
 #include "Engine/SCS_Node.h"
+#include "Engine/LevelScriptBlueprint.h"
+#include "Engine/World.h"
+#include "Editor.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
@@ -109,6 +112,20 @@ UBlueprint* FMCPCommonUtils::FindBlueprint(const FString& BlueprintName)
 		if (AssetData.AssetName.ToString() == BlueprintName)
 		{
 			return Cast<UBlueprint>(AssetData.GetAsset());
+		}
+	}
+
+	// Fallback: Check if it's a Level Script Blueprint (not registered in AssetRegistry)
+	if (GEditor)
+	{
+		UWorld* World = GEditor->GetEditorWorldContext().World();
+		if (World && World->PersistentLevel)
+		{
+			ULevelScriptBlueprint* LevelBP = World->PersistentLevel->GetLevelScriptBlueprint(false);
+			if (LevelBP && LevelBP->GetName() == BlueprintName)
+			{
+				return LevelBP;
+			}
 		}
 	}
 

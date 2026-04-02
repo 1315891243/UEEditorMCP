@@ -15,6 +15,7 @@ tool-visibility threshold.
 from . import (
     blueprint,
     editor,
+    level,
     materials,
     nodes,
     nodes_create,
@@ -27,6 +28,7 @@ from . import (
 __all__ = [
     "blueprint",
     "editor",
+    "level",
     "materials",
     "nodes",
     "nodes_create",

@@ -29,8 +29,7 @@
 #include "Components/ComboBoxString.h"
 #include "Components/CheckBox.h"
 
-// MVVM includes — only available with the ModelViewViewModelBlueprint module (UE5.3+)
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+// MVVM includes
 #include "MVVMBlueprintView.h"
 #include "MVVMWidgetBlueprintExtension_View.h"
 #include "MVVMBlueprintViewModelContext.h"
@@ -38,8 +37,11 @@
 #include "MVVMPropertyPath.h"
 #include "Types/MVVMBindingMode.h"
 #include "Types/MVVMExecutionMode.h"
+#if ENGINE_MINOR_VERSION >= 3
 #include "INotifyFieldValueChanged.h"
-#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+#else
+#include "FieldNotification/IFieldValueChanged.h"
+#endif
 #include "Components/SpinBox.h"
 #include "Components/EditableTextBox.h"
 #include "Dom/JsonValue.h"
@@ -212,10 +214,12 @@ static void EnsureWidgetVariableGuids(UWidgetBlueprint* WidgetBlueprint)
 			return;
 		}
 		const FName WidgetFName = Widget->GetFName();
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 		if (!WidgetBlueprint->WidgetVariableNameToGuidMap.Contains(WidgetFName))
 		{
 			WidgetBlueprint->WidgetVariableNameToGuidMap.Add(WidgetFName, FGuid::NewGuid());
 		}
+#endif
 	});
 }
 
@@ -3371,13 +3375,6 @@ static UClass* ResolveClassByName(const FString& ClassName)
 }
 
 // =============================================================================
-// MVVM Actions — require ModelViewViewModelBlueprint module (UE5.3+)
-// On UE5.2 these implementations are excluded at compile time; the MCP bridge
-// registers stub handlers that return a clear "unsupported" error instead.
-// =============================================================================
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-
-// =============================================================================
 // FMVVMAddViewModelAction
 // =============================================================================
 
@@ -3483,7 +3480,11 @@ TSharedPtr<FJsonObject> FMVVMAddViewModelAction::ExecuteInternal(const TSharedPt
 	}
 	else if (CreationTypeStr.Equals(TEXT("Resolver"), ESearchCase::IgnoreCase))
 	{
+#if ENGINE_MINOR_VERSION >= 3
 		VMContext.CreationType = EMVVMBlueprintViewModelContextCreationType::Resolver;
+#else
+		return FMCPCommonUtils::CreateErrorResponse(TEXT("CreationType 'Resolver' is not supported in this engine version."));
+#endif
 	}
 
 	// Optional: getter/setter generation
@@ -3493,7 +3494,9 @@ TSharedPtr<FJsonObject> FMVVMAddViewModelAction::ExecuteInternal(const TSharedPt
 	}
 	if (Params->HasField(TEXT("create_getter")))
 	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		VMContext.bCreateGetterFunction = Params->GetBoolField(TEXT("create_getter"));
+#endif
 	}
 
 	// Add ViewModel
@@ -3660,12 +3663,22 @@ TSharedPtr<FJsonObject> FMVVMAddBindingAction::ExecuteInternal(const TSharedPtr<
 	FMVVMBlueprintViewBinding& NewBinding = BPView->AddDefaultBinding();
 
 	// Configure source path (ViewModel side)
+#if ENGINE_MINOR_VERSION >= 3
 	NewBinding.SourcePath.SetViewModelId(VMContext->GetViewModelId());
 	NewBinding.SourcePath.SetPropertyPath(WidgetBlueprint, SourceFieldVariant);
+#else
+	NewBinding.ViewModelPath.SetViewModelId(VMContext->GetViewModelId());
+	NewBinding.ViewModelPath.SetBasePropertyPath(SourceFieldVariant);
+#endif
 
 	// Configure destination path (Widget side)
+#if ENGINE_MINOR_VERSION >= 3
 	NewBinding.DestinationPath.SetWidgetName(FName(*DestWidgetName));
 	NewBinding.DestinationPath.SetPropertyPath(WidgetBlueprint, DestFieldVariant);
+#else
+	NewBinding.WidgetPath.SetWidgetName(FName(*DestWidgetName));
+	NewBinding.WidgetPath.SetBasePropertyPath(DestFieldVariant);
+#endif
 
 	// Parse binding mode
 	if (BindingModeStr.Equals(TEXT("OneTimeToDestination"), ESearchCase::IgnoreCase))
@@ -3707,7 +3720,11 @@ TSharedPtr<FJsonObject> FMVVMAddBindingAction::ExecuteInternal(const TSharedPtr<
 		}
 		else if (ExecutionModeStr.Equals(TEXT("Auto"), ESearchCase::IgnoreCase))
 		{
+#if ENGINE_MINOR_VERSION >= 3
 			NewBinding.OverrideExecutionMode = EMVVMExecutionMode::DelayedWhenSharedElseImmediate;
+#else
+			NewBinding.OverrideExecutionMode = EMVVMExecutionMode::Immediate;
+#endif
 		}
 	}
 
@@ -3805,14 +3822,20 @@ TSharedPtr<FJsonObject> FMVVMGetBindingsAction::ExecuteInternal(const TSharedPtr
 			CreationStr = TEXT("GlobalViewModelCollection"); break;
 		case EMVVMBlueprintViewModelContextCreationType::PropertyPath:
 			CreationStr = TEXT("PropertyPath"); break;
+#if ENGINE_MINOR_VERSION >= 3
 		case EMVVMBlueprintViewModelContextCreationType::Resolver:
 			CreationStr = TEXT("Resolver"); break;
+#endif
 		default:
 			CreationStr = TEXT("Unknown"); break;
 		}
 		VMObj->SetStringField(TEXT("creation_type"), CreationStr);
 		VMObj->SetBoolField(TEXT("create_setter"), VM.bCreateSetterFunction);
+#if ENGINE_MINOR_VERSION >= 4
 		VMObj->SetBoolField(TEXT("create_getter"), VM.bCreateGetterFunction);
+#else
+		VMObj->SetBoolField(TEXT("create_getter"), false);
+#endif
 		VMObj->SetBoolField(TEXT("optional"), VM.bOptional);
 
 		VMArray.Add(MakeShared<FJsonValueObject>(VMObj));
@@ -3861,8 +3884,10 @@ TSharedPtr<FJsonObject> FMVVMGetBindingsAction::ExecuteInternal(const TSharedPtr
 				ExecStr = TEXT("Delayed"); break;
 			case EMVVMExecutionMode::Tick:
 				ExecStr = TEXT("Tick"); break;
+#if ENGINE_MINOR_VERSION >= 3
 			case EMVVMExecutionMode::DelayedWhenSharedElseImmediate:
 				ExecStr = TEXT("Auto"); break;
+#endif
 			default:
 				ExecStr = TEXT("Unknown"); break;
 			}
@@ -4022,5 +4047,3 @@ TSharedPtr<FJsonObject> FMVVMRemoveViewModelAction::ExecuteInternal(const TShare
 	ResultObj->SetStringField(TEXT("removed_viewmodel_id"), TargetId.ToString());
 	return ResultObj;
 }
-
-#endif // ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3

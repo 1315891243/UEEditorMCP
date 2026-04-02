@@ -264,10 +264,12 @@ TSharedPtr<FJsonObject> FCompileBlueprintAction::ExecuteInternal(const TSharedPt
 		{
 			WBP->WidgetTree->ForEachWidget([&](UWidget* Widget)
 			{
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 				if (Widget && !WBP->WidgetVariableNameToGuidMap.Contains(Widget->GetFName()))
 				{
 					WBP->WidgetVariableNameToGuidMap.Add(Widget->GetFName(), FGuid::NewGuid());
 				}
+#endif
 			});
 		}
 	}

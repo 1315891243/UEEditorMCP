@@ -212,7 +212,7 @@ TSharedPtr<FJsonObject> FFindBlueprintNodesAction::ExecuteInternal(const TShared
 				{
 					bMatch = true;
 				}
-				else if (CustomNode->CustomFunctionName == EventName)
+				else if (CustomNode->CustomFunctionName == FName(*EventName))
 				{
 					bMatch = true;
 				}
@@ -1794,19 +1794,35 @@ TSharedPtr<FJsonObject> FAddBlueprintGetSubsystemNodeAction::ExecuteInternal(con
 
 	if (FoundClass->IsChildOf(ULocalPlayerSubsystem::StaticClass()))
 	{
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 		UK2Node_GetSubsystemFromPC* SubsystemNode = FEdGraphSchemaAction_K2NewNode::SpawnNode<UK2Node_GetSubsystemFromPC>(
 			TargetGraph, Position, EK2NewNodeFlags::None,
 			[FoundClass](UK2Node_GetSubsystemFromPC* Node) { Node->Initialize(FoundClass); }
 		);
+#else
+		// UE5.5: UK2Node_GetSubsystemFromPC lacks BLUEPRINTGRAPH_API — fall back to base class
+		UK2Node_GetSubsystem* SubsystemNode = FEdGraphSchemaAction_K2NewNode::SpawnNode<UK2Node_GetSubsystem>(
+			TargetGraph, Position, EK2NewNodeFlags::None,
+			[FoundClass](UK2Node_GetSubsystem* Node) { Node->Initialize(FoundClass); }
+		);
+#endif
 		CreatedNode = SubsystemNode;
 		NodeTypeUsed = TEXT("GetSubsystemFromPC");
 	}
 	else if (FoundClass->IsChildOf(UEngineSubsystem::StaticClass()))
 	{
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 		UK2Node_GetEngineSubsystem* SubsystemNode = FEdGraphSchemaAction_K2NewNode::SpawnNode<UK2Node_GetEngineSubsystem>(
 			TargetGraph, Position, EK2NewNodeFlags::None,
 			[FoundClass](UK2Node_GetEngineSubsystem* Node) { Node->Initialize(FoundClass); }
 		);
+#else
+		// UE5.5: UK2Node_GetEngineSubsystem lacks BLUEPRINTGRAPH_API — fall back to base class
+		UK2Node_GetSubsystem* SubsystemNode = FEdGraphSchemaAction_K2NewNode::SpawnNode<UK2Node_GetSubsystem>(
+			TargetGraph, Position, EK2NewNodeFlags::None,
+			[FoundClass](UK2Node_GetSubsystem* Node) { Node->Initialize(FoundClass); }
+		);
+#endif
 		CreatedNode = SubsystemNode;
 		NodeTypeUsed = TEXT("GetEngineSubsystem");
 	}

@@ -32,6 +32,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
     registry.register_many(_MATERIAL_ACTIONS)
     registry.register_many(_WIDGET_ACTIONS)
     registry.register_many(_INPUT_ACTIONS)
+    registry.register_many(_LEVEL_ACTIONS)
 
 
 # =========================================================================
@@ -3123,5 +3124,75 @@ _INPUT_ACTIONS = [
             },
             "required": ["context_name", "action_name", "key"]
         },
+    ),
+]
+
+
+# =========================================================================
+# Level Management
+# =========================================================================
+_LEVEL_ACTIONS = [
+    ActionDef(
+        id="level.create",
+        command="create_level",
+        tags=("level", "map", "create", "asset"),
+        description="Create a new empty level (map) asset",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Content path, e.g. /Game/Maps/MyLevel"},
+                "template": {"type": "string", "description": "Template: 'Empty' (default) or 'Default'"}
+            },
+            "required": ["path"]
+        },
+        examples=({"path": "/Game/Maps/MyLevel"},),
+    ),
+    ActionDef(
+        id="level.open",
+        command="open_level",
+        tags=("level", "map", "open", "load"),
+        description="Open an existing level in the editor",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Content path of the level"}
+            },
+            "required": ["path"]
+        },
+        examples=({"path": "/Game/Maps/MyLevel"},),
+    ),
+    ActionDef(
+        id="level.save",
+        command="save_level",
+        tags=("level", "map", "save"),
+        description="Save the currently loaded level",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Save-as path (optional, saves in-place if omitted)"}
+            }
+        },
+        examples=({},),
+    ),
+    ActionDef(
+        id="level.get_current",
+        command="get_current_level",
+        tags=("level", "map", "info", "query"),
+        description="Get info about the currently loaded level",
+        input_schema={"type": "object", "properties": {}},
+    ),
+    ActionDef(
+        id="level.get_blueprint",
+        command="get_level_blueprint",
+        tags=("level", "blueprint", "script", "graph"),
+        description="Get a reference to the Level Blueprint for use with graph commands",
+        input_schema={"type": "object", "properties": {}},
+    ),
+    ActionDef(
+        id="level.open_blueprint_editor",
+        command="open_level_blueprint_editor",
+        tags=("level", "blueprint", "editor", "ui"),
+        description="Open the Level Blueprint editor UI",
+        input_schema={"type": "object", "properties": {}},
     ),
 ]

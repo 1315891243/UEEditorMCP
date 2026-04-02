@@ -1286,14 +1286,20 @@ TSharedPtr<FJsonObject> FRenameAssetsAction::ExecuteInternal(const TSharedPtr<FJ
 	}
 	else if (FixupModeRaw == TEXT("prompt"))
 	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		FixupMode = ERedirectFixupMode::PromptForDeletingRedirectors;
+#else
+		FixupMode = ERedirectFixupMode::DeleteFixedUpRedirectors;
+#endif
 	}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 	if (!bAllowUIPrompts && FixupMode == ERedirectFixupMode::PromptForDeletingRedirectors)
 	{
 		UE_LOG(LogMCP, Warning, TEXT("rename_assets: fixup_mode='prompt' requested, but allow_ui_prompts=false; forcing fixup_mode='delete' for non-interactive execution"));
 		FixupMode = ERedirectFixupMode::DeleteFixedUpRedirectors;
 	}
+#endif
 
 	const bool bEffectiveCheckoutDialogPrompt = bAllowUIPrompts && bRequestedCheckoutDialogPrompt;
 
@@ -1434,9 +1440,13 @@ TSharedPtr<FJsonObject> FRenameAssetsAction::ExecuteInternal(const TSharedPtr<FJ
 	Result->SetBoolField(TEXT("checkout_dialog_prompt_effective"), bEffectiveCheckoutDialogPrompt);
 	Result->SetStringField(
 		TEXT("fixup_mode_effective"),
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 4
 		FixupMode == ERedirectFixupMode::LeaveFixedUpRedirectors
 			? TEXT("leave")
 			: (FixupMode == ERedirectFixupMode::PromptForDeletingRedirectors ? TEXT("prompt") : TEXT("delete"))
+#else
+		FixupMode == ERedirectFixupMode::LeaveFixedUpRedirectors ? TEXT("leave") : TEXT("delete")
+#endif
 	);
 	Result->SetNumberField(TEXT("redirectors_found"), FoundRedirectorCount);
 	Result->SetNumberField(TEXT("redirectors_fixup_attempted"), FixedRedirectorCount);
@@ -1605,7 +1615,11 @@ TSharedPtr<FJsonObject> FGetSelectedAssetThumbnailAction::ExecuteInternal(const 
 			&RenderedThumbnail
 		);
 
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 		if (RenderedThumbnail.IsEmpty() || !RenderedThumbnail.HasValidImageData())
+#else
+		if (RenderedThumbnail.IsEmpty())
+#endif
 		{
 			Item->SetBoolField(TEXT("success"), false);
 			Item->SetStringField(TEXT("error"), TEXT("thumbnail_render_failed"));
